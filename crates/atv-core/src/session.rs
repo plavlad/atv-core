@@ -1,9 +1,9 @@
 //! Companion Link session: pairing, verification and the encrypted control
 //! channel. Ported from `fake_atv.py`'s `CompanionSession`.
 
+use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
-use std::io::Cursor;
 
 use ed25519_dalek::{Signer, SigningKey};
 use tokio::io::AsyncWriteExt;
@@ -33,8 +33,7 @@ const TAP_MAX_DISTANCE: f64 = 60.0; // below this a touch sequence counts as a t
 
 /// Fixed `altIRK` value from `fake_atv._pair_setup_m5`.
 const ALT_IRK: [u8; 16] = [
-    0x2d, 0x54, 0xe0, 0x7a, 0x88, 0x2a, 0x65, 0x6e, 0x11, 0xab, 0x82, 0x76, 0x2d, 0x27, 0x25,
-    0xc5,
+    0x2d, 0x54, 0xe0, 0x7a, 0x88, 0x2a, 0x65, 0x6e, 0x11, 0xab, 0x82, 0x76, 0x2d, 0x27, 0x25, 0xc5,
 ];
 
 pub type SharedWriter = Arc<Mutex<OwnedWriteHalf>>;
@@ -64,78 +63,83 @@ fn hid_command_name(command: u64) -> String {
         19 => "power".into(),
         other => format!("unknown:{other}"),
     }
+}
 
-    fn resolve_plist_uid<'a>(objects: &'a [plist::Value], value: &'a plist::Value) -> Option<&'a plist::Value> {
-        match value {
-            plist::Value::Uid(uid) => objects.get(uid.get() as usize),
-            _ => Some(value),
+fn resolve_plist_uid<'a>(
+    objects: &'a [plist::Value],
+    value: &'a plist::Value,
+) -> Option<&'a plist::Value> {
+    match value {
+        plist::Value::Uid(uid) => objects.get(uid.get() as usize),
+        _ => Some(value),
+    }
+}
+
+fn extract_text_from_keyed_archive(data: &[u8]) -> Option<String> {
+    let root = plist::Value::from_reader(Cursor::new(data)).ok()?;
+    let dict = root.as_dictionary()?;
+    let objects = dict.get("$objects")?.as_array()?;
+    let top = dict.get("$top")?.as_dictionary()?;
+    let text_ops = resolve_plist_uid(objects, top.get("textOperations")?)?.as_dictionary()?;
+    let keyboard_output =
+        resolve_plist_uid(objects, text_ops.get("keyboardOutput")?)?.as_dictionary()?;
+    let insertion =
+        resolve_plist_uid(objects, keyboard_output.get("insertionText")?)?.as_string()?;
+    if insertion.is_empty() {
+        None
+    } else {
+        Some(insertion.to_string())
+    }
+}
+
+fn collect_text_payloads(value: &Value, out: &mut Vec<String>) {
+    match value {
+        Value::Bytes(data) => {
+            if let Some(text) = extract_text_from_keyed_archive(data) {
+                out.push(text);
+            }
+        }
+        Value::Dict(entries) => {
+            for (_, v) in entries {
+                collect_text_payloads(v, out);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                collect_text_payloads(item, out);
+            }
+        }
+        Value::Str(text) => {
+            if !text.is_empty() {
+                out.push(text.clone());
+            }
+        }
+        _ => {}
+    }
+}
+
+fn extract_text_input(content: &Value) -> Option<String> {
+    let mut texts = Vec::new();
+    if let Some(raw) = content.get("text").and_then(Value::as_str) {
+        if !raw.is_empty() {
+            texts.push(raw.to_string());
         }
     }
 
-    fn extract_text_from_keyed_archive(data: &[u8]) -> Option<String> {
-        let root = plist::Value::from_reader(Cursor::new(data)).ok()?;
-        let dict = root.as_dictionary()?;
-        let objects = dict.get("$objects")?.as_array()?;
-        let top = dict.get("$top")?.as_dictionary()?;
-        let text_ops = resolve_plist_uid(objects, top.get("textOperations")?)?.as_dictionary()?;
-        let keyboard_output = resolve_plist_uid(objects, text_ops.get("keyboardOutput")?)?.as_dictionary()?;
-        let insertion = resolve_plist_uid(objects, keyboard_output.get("insertionText")?)?.as_string()?;
-        if insertion.is_empty() {
-            None
-        } else {
-            Some(insertion.to_string())
+    if let Some(raw) = content.get("insertionText").and_then(Value::as_str) {
+        if !raw.is_empty() {
+            texts.push(raw.to_string());
         }
     }
 
-    fn collect_text_payloads(value: &Value, out: &mut Vec<String>) {
-        match value {
-            Value::Bytes(data) => {
-                if let Some(text) = extract_text_from_keyed_archive(data) {
-                    out.push(text);
-                }
-            }
-            Value::Dict(entries) => {
-                for (_, v) in entries {
-                    collect_text_payloads(v, out);
-                }
-            }
-            Value::Array(items) => {
-                for item in items {
-                    collect_text_payloads(item, out);
-                }
-            }
-            Value::Str(text) => {
-                if !text.is_empty() {
-                    out.push(text.clone());
-                }
-            }
-            _ => {}
+    if let Some(ti_data) = content.get("_tiD").and_then(Value::as_bytes) {
+        if let Some(text) = extract_text_from_keyed_archive(ti_data) {
+            texts.push(text);
         }
     }
 
-    fn extract_text_input(content: &Value) -> Option<String> {
-        let mut texts = Vec::new();
-        if let Some(raw) = content.get("text").and_then(Value::as_str) {
-            if !raw.is_empty() {
-                texts.push(raw.to_string());
-            }
-        }
-
-        if let Some(raw) = content.get("insertionText").and_then(Value::as_str) {
-            if !raw.is_empty() {
-                texts.push(raw.to_string());
-            }
-        }
-
-        if let Some(ti_data) = content.get("_tiD").and_then(Value::as_bytes) {
-            if let Some(text) = extract_text_from_keyed_archive(ti_data) {
-                texts.push(text);
-            }
-        }
-
-        collect_text_payloads(content, &mut texts);
-        texts.into_iter().find(|s| !s.trim().is_empty())
-    }
+    collect_text_payloads(content, &mut texts);
+    texts.into_iter().find(|s| !s.trim().is_empty())
 }
 
 /// One Companion connection's state machine.
@@ -337,7 +341,8 @@ impl CompanionSession {
             )])),
         )
         .await?;
-        self.delegate.on_event(EventKind::Capabilities, "volume,mute,power");
+        self.delegate
+            .on_event(EventKind::Capabilities, "volume,mute,power");
         Ok(())
     }
 
@@ -369,7 +374,8 @@ impl CompanionSession {
         let content = Value::dict(vec![Value::kv("state", Value::Int(self.system_status))]);
         self.send_event("SystemStatus", xid, Some(content.clone()))
             .await?;
-        self.send_event("TVSystemStatus", xid, Some(content)).await?;
+        self.send_event("TVSystemStatus", xid, Some(content))
+            .await?;
         Ok(())
     }
 
@@ -499,7 +505,11 @@ impl CompanionSession {
         pairing_data: &std::collections::BTreeMap<u8, Vec<u8>>,
     ) -> Result<()> {
         let shared = self.srp.session_key()?.to_vec();
-        let session_key = hkdf_expand("Pair-Setup-Encrypt-Salt", "Pair-Setup-Encrypt-Info", &shared);
+        let session_key = hkdf_expand(
+            "Pair-Setup-Encrypt-Salt",
+            "Pair-Setup-Encrypt-Info",
+            &shared,
+        );
         let mut chacha = CompanionCipher::new(&session_key, &session_key, 8)?;
         let encrypted = pairing_data
             .get(&tags::ENCRYPTED_DATA)
@@ -526,10 +536,7 @@ impl CompanionSession {
                 Value::str(&uuid::Uuid::new_v4().to_string().to_uppercase()),
             ),
             Value::kv("model", Value::str(DEVICE_MODEL)),
-            Value::kv(
-                "wifiMAC",
-                Value::Bytes(self.device_mac.to_vec()),
-            ),
+            Value::kv("wifiMAC", Value::Bytes(self.device_mac.to_vec())),
             Value::kv("name", Value::str(&self.device_name)),
             Value::kv("mac", Value::Bytes(self.device_mac.to_vec())),
         ]);
@@ -664,8 +671,15 @@ impl CompanionSession {
                     .and_then(Value::as_int)
                     .unwrap_or_else(|| rand::random::<u32>() as u64);
                 let remote_sid = self.remote_session_id;
-                self.send_response(xid, Some(Value::dict(vec![Value::kv("_sid", Value::Int(remote_sid as u64))])), 0)
-                    .await?;
+                self.send_response(
+                    xid,
+                    Some(Value::dict(vec![Value::kv(
+                        "_sid",
+                        Value::Int(remote_sid as u64),
+                    )])),
+                    0,
+                )
+                .await?;
                 info!("<< _sessionStart: session established (local_sid={local_sid}, remote_sid={remote_sid})");
                 self.delegate.on_event(
                     EventKind::SessionStarted,
@@ -705,7 +719,8 @@ impl CompanionSession {
                 self.send_media_capabilities(xid).await?;
                 info!("<< TVRCSessionStart: remote ready (version={version})");
                 self.delegate.on_event(EventKind::RemoteReady, "");
-                self.inspector.emit("remote_ready", &format!("{{\"version\":\"{version}\"}}"));
+                self.inspector
+                    .emit("remote_ready", &format!("{{\"version\":\"{version}\"}}"));
             }
             Some("_sessionStop") => {
                 self.session_established.store(false, Ordering::SeqCst);
@@ -724,8 +739,12 @@ impl CompanionSession {
             Some("_touchStart") => {
                 self.session_established.store(true, Ordering::SeqCst);
                 *self.timeout_deadline.lock().await = None;
-                self.send_response(xid, Some(Value::dict(vec![Value::kv("_i", Value::Int(1))])), 0)
-                    .await?;
+                self.send_response(
+                    xid,
+                    Some(Value::dict(vec![Value::kv("_i", Value::Int(1))])),
+                    0,
+                )
+                .await?;
             }
             Some("_hidT") => {
                 self.session_established.store(true, Ordering::SeqCst);
@@ -810,10 +829,8 @@ impl CompanionSession {
             Some("_tiC") | Some("_rtiData") => {
                 if let Some(text) = extract_text_input(&content) {
                     self.delegate.on_text_input(&text);
-                    self.inspector.emit(
-                        "text_input",
-                        &format!("{{\"text\":{:?}}}", text),
-                    );
+                    self.inspector
+                        .emit("text_input", &format!("{{\"text\":{:?}}}", text));
                 }
                 if xid.is_some() {
                     self.send_response(xid, None, 0).await?;
@@ -853,10 +870,8 @@ impl CompanionSession {
                     .unwrap_or("")
                     .to_string();
                 self.delegate.on_event(EventKind::LaunchApp, &bundle_id);
-                self.inspector.emit(
-                    "launch_app",
-                    &format!("{{\"bundle_id\":\"{bundle_id}\"}}"),
-                );
+                self.inspector
+                    .emit("launch_app", &format!("{{\"bundle_id\":\"{bundle_id}\"}}"));
                 self.send_response(xid, None, 0).await?;
             }
             Some("_systemInfo") | Some("SystemInfo") => {
@@ -893,8 +908,7 @@ impl CompanionSession {
                 } else {
                     std::time::Duration::from_millis(2500)
                 };
-                *self.timeout_deadline.lock().await =
-                    Some(tokio::time::Instant::now() + timeout);
+                *self.timeout_deadline.lock().await = Some(tokio::time::Instant::now() + timeout);
             }
             _ => {
                 if let Some(id) = &identifier {
@@ -985,10 +999,8 @@ impl CompanionSession {
                     self.delegate.on_button(&command_name);
                 }
             }
-            self.inspector.emit(
-                "button",
-                &format!("{{\"name\":\"{command_name}\"}}"),
-            );
+            self.inspector
+                .emit("button", &format!("{{\"name\":\"{command_name}\"}}"));
         }
         Ok(())
     }
@@ -1055,7 +1067,8 @@ impl CompanionSession {
                 if mode == TrackpadMode::Mouse {
                     self.delegate.on_touch(0.0, 0.0, TouchPhase::Began);
                 }
-                self.inspector.emit("touch", "{\"phase\":1,\"dx\":0.0,\"dy\":0.0}");
+                self.inspector
+                    .emit("touch", "{\"phase\":1,\"dx\":0.0,\"dy\":0.0}");
             }
             return;
         }
@@ -1133,10 +1146,8 @@ impl CompanionSession {
             "up"
         };
         self.delegate.on_button(direction);
-        self.inspector.emit(
-            "button",
-            &format!("{{\"name\":\"{direction}\"}}"),
-        );
+        self.inspector
+            .emit("button", &format!("{{\"name\":\"{direction}\"}}"));
     }
 }
 

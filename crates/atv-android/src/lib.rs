@@ -100,10 +100,10 @@ impl AtvDelegate for JniDelegate {
                 &[JValue::Object(&kind_str), JValue::Object(&detail_str)],
             );
         }
+    }
 
-        fn on_text_input(&self, text: &str) {
-            self.call_void_string("onTextInput", text);
-        }
+    fn on_text_input(&self, text: &str) {
+        self.call_void_string("onTextInput", text);
     }
 }
 
@@ -196,9 +196,7 @@ pub extern "system" fn Java_com_corvofeng_fakeatv_AtvNative_nativeStartServer(
         }
     }
 
-    let server_res = runtime.block_on(async {
-        AtvServer::start(config, delegate).await
-    });
+    let server_res = runtime.block_on(async { AtvServer::start(config, delegate).await });
 
     match server_res {
         Ok(server) => {

@@ -80,7 +80,11 @@ impl TrackpadMode {
             Some(Self::Direction)
         } else if trimmed == "mouse" || trimmed == "true" {
             Some(Self::Mouse)
-        } else if trimmed == "idle" || trimmed == "preview" || trimmed == "noop" || trimmed == "dummy" {
+        } else if trimmed == "idle"
+            || trimmed == "preview"
+            || trimmed == "noop"
+            || trimmed == "dummy"
+        {
             Some(Self::Idle)
         } else {
             None
