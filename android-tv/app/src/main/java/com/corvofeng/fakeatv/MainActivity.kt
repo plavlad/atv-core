@@ -83,11 +83,11 @@ class MainActivity : AppCompatActivity() {
 
         btnAccessibility.setOnClickListener {
             if (RemoteController.isHardwareAvailable) {
-                Toast.makeText(this, "Hardware remote driver (/dev/input/event0) is active!\nNo accessibility service needed.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Драйвер аппаратного пульта (/dev/input/event0) активен!\nСлужба специальных возможностей не требуется.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (AtvAccessibilityService.isServiceRunning) {
-                Toast.makeText(this, "Accessibility Service is already enabled", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Служба специальных возможностей уже включена", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             try {
@@ -95,14 +95,14 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             } catch (e: ActivityNotFoundException) {
                 AlertDialog.Builder(this)
-                    .setTitle("Accessibility Settings")
+                    .setTitle("Настройки специальных возможностей")
                     .setMessage(
-                        "This device does not have a system Accessibility Settings page.\n\n" +
-                        "Enable via ADB:\n\n" +
+                        "На этом устройстве нет системной страницы настроек специальных возможностей.\n\n" +
+                        "Включите через ADB:\n\n" +
                         "adb shell settings put secure enabled_accessibility_services com.corvofeng.fakeatv/.AtvAccessibilityService\n" +
                         "adb shell settings put secure accessibility_enabled 1"
                     )
-                    .setPositiveButton("OK", null)
+                    .setPositiveButton("ОК", null)
                     .show()
             }
         }
@@ -147,31 +147,31 @@ class MainActivity : AppCompatActivity() {
         val running = AtvService.isRunning
         val deviceName = DeviceInfo.getDeviceName(this)
         val deviceId = DeviceInfo.getDeviceId(this)
-        tvStatus.text = if (running) "$deviceName: Running" else "$deviceName: Stopped"
+        tvStatus.text = if (running) "$deviceName: Запущен" else "$deviceName: Остановлен"
         tvStatus.setTextColor(if (running) 0xFF4CAF50.toInt() else 0xFFF44336.toInt())
-        btnToggle.text = if (running) "Stop Server" else "Start Server"
+        btnToggle.text = if (running) "Остановить сервер" else "Запустить сервер"
 
         tvIp.text = "IP: ${getWifiIpAddress()}   ID: $deviceId"
-        tvPin.text = "Pairing PIN: 1111"
+        tvPin.text = "PIN для сопряжения: 1111"
 
         val currentBinding = DeviceInfo.getMenuButtonBinding(this)
-        tvMenuBinding.text = "Menu 键映射: ${getMenuBindingDisplayName(currentBinding)}"
+        tvMenuBinding.text = "Назначение кнопки Menu: ${getMenuBindingDisplayName(currentBinding)}"
 
         // Injection mode display
         val mode = KeyDispatcher.currentMode
-        tvInjectionMode.text = "按键注入模式: ${mode.displayName}"
+        tvInjectionMode.text = "Режим ввода кнопок: ${mode.displayName}"
 
         val hwOk = RemoteController.isHardwareAvailable
         val adbOk = LocalAdbDriver.isConnected.get()
         val accessOk = AtvAccessibilityService.isServiceRunning
 
-        val hwStr = if (hwOk) "硬件[●可用]" else "硬件[○无]"
-        val adbStr = if (adbOk) "ADB[●已连]" else "ADB[○断开]"
-        val a11yStr = if (accessOk) "无障碍[●就绪]" else "无障碍[○关闭]"
+        val hwStr = if (hwOk) "Аппаратный[●доступен]" else "Аппаратный[○нет]"
+        val adbStr = if (adbOk) "ADB[●подключен]" else "ADB[○отключен]"
+        val a11yStr = if (accessOk) "Спецвозможности[●готово]" else "Спецвозможности[○выкл]"
         val lastUsed = KeyDispatcher.lastUsedEngine
 
-        tvDriverStatus.text = "通道: $hwStr | $adbStr | $a11yStr\n当前生效: $lastUsed"
-        tvAccessibility.text = "无障碍状态: " + if (accessOk) "已开启 (可兜底)" else "未开启 (普通电视推荐开启)"
+        tvDriverStatus.text = "Каналы: $hwStr | $adbStr | $a11yStr\nАктивный сейчас: $lastUsed"
+        tvAccessibility.text = "Служба спецвозможностей: " + if (accessOk) "включена (резервный канал)" else "выключена (рекомендуется включить)"
         tvAccessibility.setTextColor(if (accessOk) 0xFF4CAF50.toInt() else 0xFFFF9800.toInt())
     }
 
@@ -182,33 +182,33 @@ class MainActivity : AppCompatActivity() {
         val currentIndex = modes.indexOf(current).let { if (it >= 0) it else 0 }
 
         AlertDialog.Builder(this)
-            .setTitle("选择按键注入模式 (优先策略)")
+            .setTitle("Выбор режима ввода кнопок (приоритет)")
             .setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 val selected = modes[which]
                 KeyDispatcher.setMode(this, selected)
-                appendLog("[Config] 按键注入模式: ${selected.displayName}")
+                appendLog("[Конфиг] Режим ввода кнопок: ${selected.displayName}")
                 updateUi()
-                Toast.makeText(this, "已切换: ${selected.displayName}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Переключено: ${selected.displayName}", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Отмена", null)
             .show()
     }
 
     private fun showMenuBindingDialog() {
         val options = arrayOf(
-            "无 (默认: 保持原始按键功能)",
-            "播放/暂停 键 (play_pause, 推荐，位于左下角)",
-            "电视/Home 图标 键 (home, 位于右下角)",
-            "静音 键 (mute, 位于左上角)",
-            "返回 键 (menu, 位于底部中间)"
+            "Нет (по умолчанию: сохранить исходную функцию кнопки)",
+            "Кнопка Воспроизведение/Пауза (play_pause, рекомендуется, внизу слева)",
+            "Кнопка ТВ/Home (home, внизу справа)",
+            "Кнопка Без звука (mute, вверху слева)",
+            "Кнопка Назад (menu, снизу по центру)"
         )
         val values = arrayOf("none", "play_pause", "home", "mute", "menu")
         val current = DeviceInfo.getMenuButtonBinding(this)
         val currentIndex = values.indexOf(current).let { if (it >= 0) it else 0 }
 
         AlertDialog.Builder(this)
-            .setTitle("绑定遥控器按键为 Android Menu 键")
+            .setTitle("Назначить кнопку пульта как Android Menu")
             .setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 val selected = values[which]
                 DeviceInfo.setMenuButtonBinding(this, selected)
@@ -222,22 +222,22 @@ class MainActivity : AppCompatActivity() {
                 }
                 startService(intent)
 
-                appendLog("[Config] Menu 键绑定: ${options[which]}")
+                appendLog("[Конфиг] Назначение Menu: ${options[which]}")
                 updateUi()
-                Toast.makeText(this, "已设置: ${options[which]}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Установлено: ${options[which]}", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Отмена", null)
             .show()
     }
 
     private fun getMenuBindingDisplayName(binding: String): String {
         return when (binding.lowercase()) {
-            "play_pause" -> "播放/暂停 键 (play_pause)"
-            "home" -> "电视/Home 图标 键 (home)"
-            "mute" -> "静音 键 (mute)"
-            "menu" -> "返回 键 (menu)"
-            "none", "" -> "无 (默认)"
+            "play_pause" -> "Кнопка Воспроизведение/Пауза (play_pause)"
+            "home" -> "Кнопка ТВ/Home (home)"
+            "mute" -> "Кнопка Без звука (mute)"
+            "menu" -> "Кнопка Назад (menu)"
+            "none", "" -> "Нет (по умолчанию)"
             else -> binding
         }
     }
@@ -251,6 +251,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getWifiIpAddress(): String {
-        return DeviceInfo.getLocalIpAddress(this) ?: "Unknown"
+        return DeviceInfo.getLocalIpAddress(this) ?: "Неизвестно"
     }
 }

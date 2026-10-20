@@ -3,6 +3,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
+use std::io::Cursor;
 
 use ed25519_dalek::{Signer, SigningKey};
 use tokio::io::AsyncWriteExt;
@@ -62,6 +63,78 @@ fn hid_command_name(command: u64) -> String {
         18 => "mute".into(),
         19 => "power".into(),
         other => format!("unknown:{other}"),
+    }
+
+    fn resolve_plist_uid<'a>(objects: &'a [plist::Value], value: &'a plist::Value) -> Option<&'a plist::Value> {
+        match value {
+            plist::Value::Uid(uid) => objects.get(uid.get() as usize),
+            _ => Some(value),
+        }
+    }
+
+    fn extract_text_from_keyed_archive(data: &[u8]) -> Option<String> {
+        let root = plist::Value::from_reader(Cursor::new(data)).ok()?;
+        let dict = root.as_dictionary()?;
+        let objects = dict.get("$objects")?.as_array()?;
+        let top = dict.get("$top")?.as_dictionary()?;
+        let text_ops = resolve_plist_uid(objects, top.get("textOperations")?)?.as_dictionary()?;
+        let keyboard_output = resolve_plist_uid(objects, text_ops.get("keyboardOutput")?)?.as_dictionary()?;
+        let insertion = resolve_plist_uid(objects, keyboard_output.get("insertionText")?)?.as_string()?;
+        if insertion.is_empty() {
+            None
+        } else {
+            Some(insertion.to_string())
+        }
+    }
+
+    fn collect_text_payloads(value: &Value, out: &mut Vec<String>) {
+        match value {
+            Value::Bytes(data) => {
+                if let Some(text) = extract_text_from_keyed_archive(data) {
+                    out.push(text);
+                }
+            }
+            Value::Dict(entries) => {
+                for (_, v) in entries {
+                    collect_text_payloads(v, out);
+                }
+            }
+            Value::Array(items) => {
+                for item in items {
+                    collect_text_payloads(item, out);
+                }
+            }
+            Value::Str(text) => {
+                if !text.is_empty() {
+                    out.push(text.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn extract_text_input(content: &Value) -> Option<String> {
+        let mut texts = Vec::new();
+        if let Some(raw) = content.get("text").and_then(Value::as_str) {
+            if !raw.is_empty() {
+                texts.push(raw.to_string());
+            }
+        }
+
+        if let Some(raw) = content.get("insertionText").and_then(Value::as_str) {
+            if !raw.is_empty() {
+                texts.push(raw.to_string());
+            }
+        }
+
+        if let Some(ti_data) = content.get("_tiD").and_then(Value::as_bytes) {
+            if let Some(text) = extract_text_from_keyed_archive(ti_data) {
+                texts.push(text);
+            }
+        }
+
+        collect_text_payloads(content, &mut texts);
+        texts.into_iter().find(|s| !s.trim().is_empty())
     }
 }
 
@@ -726,10 +799,25 @@ impl CompanionSession {
             Some("_tiStart") => {
                 self.send_response(
                     xid,
-                    Some(Value::dict(vec![Value::kv("_tiE", Value::Bool(false))])),
+                    Some(Value::dict(vec![
+                        Value::kv("_tiE", Value::Bool(true)),
+                        Value::kv("_tiV", Value::Int(1)),
+                    ])),
                     0,
                 )
                 .await?;
+            }
+            Some("_tiC") | Some("_rtiData") => {
+                if let Some(text) = extract_text_input(&content) {
+                    self.delegate.on_text_input(&text);
+                    self.inspector.emit(
+                        "text_input",
+                        &format!("{{\"text\":{:?}}}", text),
+                    );
+                }
+                if xid.is_some() {
+                    self.send_response(xid, None, 0).await?;
+                }
             }
             Some("FetchLaunchableApplicationsEvent") => {
                 self.send_response(
@@ -1059,4 +1147,3 @@ impl Drop for CompanionSession {
         }
     }
 }
-

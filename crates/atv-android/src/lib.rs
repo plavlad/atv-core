@@ -100,6 +100,10 @@ impl AtvDelegate for JniDelegate {
                 &[JValue::Object(&kind_str), JValue::Object(&detail_str)],
             );
         }
+
+        fn on_text_input(&self, text: &str) {
+            self.call_void_string("onTextInput", text);
+        }
     }
 }
 

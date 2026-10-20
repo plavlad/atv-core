@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Path
 import android.os.Build
+import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
@@ -27,6 +28,8 @@ class AtvAccessibilityService : AccessibilityService() {
     private var screenHeight = 1080
     private var pointerX = 960f
     private var pointerY = 540f
+    @Volatile
+    private var lastEditableNode: AccessibilityNodeInfo? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -68,7 +71,19 @@ class AtvAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // No-op
+        val source = event?.source ?: return
+        val type = event.eventType
+        if ((type == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+                    type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                    type == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
+                    type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) &&
+            source.isEditable
+        ) {
+            lastEditableNode?.recycle()
+            lastEditableNode = AccessibilityNodeInfo.obtain(source)
+            Log.d(TAG, "Editable node captured for text input")
+        }
+        source.recycle()
     }
 
     override fun onInterrupt() {
@@ -77,8 +92,40 @@ class AtvAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        lastEditableNode?.recycle()
+        lastEditableNode = null
         instance = null
         Log.i(TAG, "AtvAccessibilityService destroyed")
+    }
+
+    fun setFocusedText(text: String): Boolean {
+        if (text.isEmpty()) return false
+
+        val focusedNode = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: lastEditableNode
+
+        if (focusedNode == null || !focusedNode.isEditable) {
+            Log.w(TAG, "No editable focused node for text input")
+            return false
+        }
+
+        val arguments = Bundle().apply {
+            putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                text
+            )
+        }
+
+        val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        if (success) {
+            Log.i(TAG, "Text inserted into focused editable node")
+            lastEditableNode?.recycle()
+            lastEditableNode = AccessibilityNodeInfo.obtain(focusedNode)
+        } else {
+            Log.w(TAG, "Failed to insert text into editable node")
+        }
+        return success
     }
 
     @Volatile

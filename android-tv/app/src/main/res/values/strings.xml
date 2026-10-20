@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Apple TV Remote Receiver</string>
-    <string name="accessibility_service_description">Simulates D-pad and media key presses from Apple TV Remote (iPhone/iPad Control Center).</string>
+    <string name="app_name">Приёмник Apple TV Remote</string>
+    <string name="accessibility_service_description">Эмулирует D-pad и мультимедийные кнопки из Apple TV Remote (Центр управления iPhone/iPad).</string>
 </resources>

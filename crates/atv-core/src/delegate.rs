@@ -130,6 +130,9 @@ pub trait AtvDelegate: Send + Sync + 'static {
     /// Lifecycle/state event with a human-readable detail string.
     fn on_event(&self, _kind: EventKind, _detail: &str) {}
 
+    /// Text received from the remote keyboard input flow.
+    fn on_text_input(&self, _text: &str) {}
+
     /// Called when the input mode changes (trackpad mode: Direction, Mouse, or Idle).
     fn on_trackpad_mode_changed(&self, mode: TrackpadMode) {
         self.on_mode_changed(mode.is_mouse());

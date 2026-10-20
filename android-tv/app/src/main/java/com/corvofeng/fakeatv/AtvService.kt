@@ -305,6 +305,13 @@ class AtvService : Service(), AtvNative.Callback {
         broadcast("Event", "$kind: $detail")
     }
 
+    override fun onTextInput(text: String) {
+        val inserted = AtvAccessibilityService.instance?.setFocusedText(text) == true
+        val status = if (inserted) "applied" else "ignored"
+        Log.i(TAG, "onTextInput [$status]: $text")
+        broadcast("TextInput", "$status: $text")
+    }
+
     private fun broadcast(type: String, detail: String) {
         val intent = Intent(BROADCAST_EVENT).apply {
             putExtra(EXTRA_EVENT_TYPE, type)
@@ -318,10 +325,10 @@ class AtvService : Service(), AtvNative.Callback {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Apple TV Remote Service",
+                "Сервис Apple TV Remote",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Runs the fake Apple TV receiver on Android TV"
+                description = "Запускает приёмник Apple TV Remote на Android TV"
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
@@ -337,8 +344,8 @@ class AtvService : Service(), AtvNative.Callback {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Apple TV Remote Receiver")
-            .setContentText("Listening as \"$name\" (PIN: $pin)")
+            .setContentTitle("Приёмник Apple TV Remote")
+            .setContentText("Ожидание подключений как \"$name\" (PIN: $pin)")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
