@@ -15,7 +15,7 @@
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Apple TV Remote Receiver"
+            android:text="Приёмник Apple TV Remote"
             android:textColor="#FFFFFF"
             android:textSize="28sp"
             android:textStyle="bold" />
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Control your Android TV directly using an iPhone / iPad Control Center Remote"
+            android:text="Управляйте Android TV напрямую с пульта из Центра управления iPhone / iPad"
             android:textColor="#B0BEC5"
             android:textSize="15sp" />
 
@@ -47,7 +47,7 @@
                     android:id="@+id/tvPin"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Pairing PIN: 1111"
+                    android:text="PIN для сопряжения: 1111"
                     android:textColor="#4CAF50"
                     android:textSize="24sp"
                     android:textStyle="bold" />
@@ -57,7 +57,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="IP Address: Loading..."
+                    android:text="IP-адрес: загрузка..."
                     android:textColor="#ECEFF1"
                     android:textSize="16sp" />
 
@@ -66,7 +66,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Status: Initializing..."
+                    android:text="Статус: инициализация..."
                     android:textColor="#4CAF50"
                     android:textSize="16sp" />
 
@@ -75,7 +75,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Accessibility Service: Checking..."
+                    android:text="Служба спецвозможностей: проверка..."
                     android:textColor="#ECEFF1"
                     android:textSize="15sp" />
 
@@ -84,7 +84,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Menu 键映射: 无 (默认)"
+                    android:text="Назначение кнопки Menu: нет (по умолчанию)"
                     android:textColor="#ECEFF1"
                     android:textSize="14sp" />
 
@@ -93,7 +93,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="按键注入: 自动自适应 (硬件 -> ADB -> 无障碍)"
+                    android:text="Ввод кнопок: автоадаптация (аппаратный -> ADB -> спецвозможности)"
                     android:textColor="#81D4FA"
                     android:textSize="14sp" />
 
@@ -102,7 +102,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="通道检测: 硬件驱动[--] | 本地ADB[--] | 无障碍[--]"
+                    android:text="Проверка каналов: аппаратный[--] | локальный ADB[--] | спецвозможности[--]"
                     android:textColor="#ECEFF1"
                     android:textSize="13sp" />
 
@@ -116,7 +116,7 @@
                         android:id="@+id/btnToggle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Stop Server"
+                        android:text="Остановить сервер"
                         android:focusable="true" />
 
                     <Button
@@ -124,7 +124,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="14dp"
-                        android:text="Accessibility Settings"
+                        android:text="Настройки спецвозможностей"
                         android:focusable="true" />
 
                 </LinearLayout>
@@ -139,7 +139,7 @@
                         android:id="@+id/btnInjectionMode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="切换按键注入模式"
+                        android:text="Сменить режим ввода кнопок"
                         android:focusable="true" />
 
                     <Button
@@ -147,7 +147,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="14dp"
-                        android:text="设置 Menu 键"
+                        android:text="Настроить кнопку Menu"
                         android:focusable="true" />
 
                 </LinearLayout>
@@ -166,7 +166,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Live Event Log"
+                    android:text="Журнал событий"
                     android:textColor="#90CAF9"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -181,7 +181,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:fontFamily="monospace"
-                        android:text="Waiting for Apple TV Remote connection..."
+                        android:text="Ожидание подключения Apple TV Remote..."
                         android:textColor="#CFD8DC"
                         android:textSize="13sp" />
 

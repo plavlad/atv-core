@@ -4,10 +4,10 @@ import android.content.Context
 import android.util.Log
 
 enum class InjectionMode(val key: String, val displayName: String) {
-    AUTO("auto", "自动自适应 (硬件 -> ADB -> 无障碍)"),
-    EVENT("event", "仅硬件事件 (/dev/input)"),
-    ADB("adb", "仅本地 ADB (127.0.0.1:5555)"),
-    A11Y("a11y", "仅无障碍服务 (Accessibility)");
+    AUTO("auto", "Автоадаптация (аппаратный -> ADB -> спецвозможности)"),
+    EVENT("event", "Только аппаратный ввод (/dev/input)"),
+    ADB("adb", "Только локальный ADB (127.0.0.1:5555)"),
+    A11Y("a11y", "Только служба спецвозможностей (Accessibility)");
 
     companion object {
         fun fromKey(key: String): InjectionMode {
@@ -26,7 +26,7 @@ object KeyDispatcher {
     var menuBindingButton: String = "none"
 
     @Volatile
-    var lastUsedEngine: String = "未执行"
+    var lastUsedEngine: String = "Не выполнено"
         private set
 
     fun init(context: Context) {
@@ -62,41 +62,41 @@ object KeyDispatcher {
             InjectionMode.AUTO -> {
                 // Tier 1: Hardware Event (/dev/input)
                 if (RemoteController.isHardwareAvailable && RemoteController.sendKey(lowerName, isMappedToMenu)) {
-                    executedEngine = "硬件事件驱动 (/dev/input)"
+                    executedEngine = "Аппаратный драйвер событий (/dev/input)"
                 }
                 // Tier 2: Local ADB (127.0.0.1:5555)
                 else if (LocalAdbDriver.sendKey(lowerName, isMappedToMenu)) {
-                    executedEngine = "本地 ADB (127.0.0.1:5555)"
+                    executedEngine = "Локальный ADB (127.0.0.1:5555)"
                 }
                 // Tier 3: Accessibility Service fallback
                 else if (AtvAccessibilityService.instance?.sendKey(lowerName, isMappedToMenu) == true) {
-                    executedEngine = "无障碍服务 (Accessibility)"
+                    executedEngine = "Служба спецвозможностей (Accessibility)"
                 } else {
-                    executedEngine = "分发失败 (无可用通道)"
+                    executedEngine = "Ошибка отправки (нет доступного канала)"
                 }
             }
 
             InjectionMode.EVENT -> {
                 if (RemoteController.sendKey(lowerName, isMappedToMenu)) {
-                    executedEngine = "硬件事件驱动"
+                    executedEngine = "Аппаратный драйвер событий"
                 } else {
-                    executedEngine = "硬件驱动失败 (无权限或设备不存在)"
+                    executedEngine = "Ошибка аппаратного драйвера (нет прав или устройство отсутствует)"
                 }
             }
 
             InjectionMode.ADB -> {
                 if (LocalAdbDriver.sendKey(lowerName, isMappedToMenu)) {
-                    executedEngine = "本地 ADB"
+                    executedEngine = "Локальный ADB"
                 } else {
-                    executedEngine = "本地 ADB 失败 (端口未连接或已关闭)"
+                    executedEngine = "Ошибка локального ADB (порт не подключен или закрыт)"
                 }
             }
 
             InjectionMode.A11Y -> {
                 if (AtvAccessibilityService.instance?.sendKey(lowerName, isMappedToMenu) == true) {
-                    executedEngine = "无障碍服务"
+                    executedEngine = "Служба спецвозможностей"
                 } else {
-                    executedEngine = "无障碍服务失败 (服务未开启)"
+                    executedEngine = "Ошибка службы спецвозможностей (служба выключена)"
                 }
             }
         }

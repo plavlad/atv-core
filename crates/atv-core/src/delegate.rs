@@ -80,7 +80,11 @@ impl TrackpadMode {
             Some(Self::Direction)
         } else if trimmed == "mouse" || trimmed == "true" {
             Some(Self::Mouse)
-        } else if trimmed == "idle" || trimmed == "preview" || trimmed == "noop" || trimmed == "dummy" {
+        } else if trimmed == "idle"
+            || trimmed == "preview"
+            || trimmed == "noop"
+            || trimmed == "dummy"
+        {
             Some(Self::Idle)
         } else {
             None
@@ -129,6 +133,9 @@ pub trait AtvDelegate: Send + Sync + 'static {
 
     /// Lifecycle/state event with a human-readable detail string.
     fn on_event(&self, _kind: EventKind, _detail: &str) {}
+
+    /// Text received from the remote keyboard input flow.
+    fn on_text_input(&self, _text: &str) {}
 
     /// Called when the input mode changes (trackpad mode: Direction, Mouse, or Idle).
     fn on_trackpad_mode_changed(&self, mode: TrackpadMode) {

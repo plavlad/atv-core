@@ -55,7 +55,7 @@ object DeviceInfo {
             Build.MANUFACTURER.equals("Dangbei", ignoreCase = true) ||
             Build.MODEL.startsWith("DBBOX", ignoreCase = true)
         ) {
-            return "当贝盒子"
+            return "Приставка Dangbei"
         }
 
         val systemName = try {

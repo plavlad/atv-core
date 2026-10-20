@@ -14,6 +14,7 @@ object AtvNative {
         fun onTouch(dx: Double, dy: Double, phase: Int)
         fun onAudio(volume: Double, muted: Boolean)
         fun onEvent(kind: String, detail: String)
+        fun onTextInput(text: String)
     }
 
     external fun nativeStartServer(
